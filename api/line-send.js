@@ -11,7 +11,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { token, userId, message } = req.body;
+  // 環境変数から取得（ユーザーには見えない）
+  const token = process.env.LINE_CHANNEL_TOKEN;
+  const userId = process.env.LINE_USER_ID;
+  const { message } = req.body;
 
   if (!token || !userId || !message) {
     return res.status(400).json({ error: 'Missing required fields' });
