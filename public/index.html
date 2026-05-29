@@ -115,23 +115,12 @@
 
 <header>
   <div class="logo">かぶ<span>AI</span></div>
-  <div style="font-size:11px;color:var(--text2)" id="api-indicator">🔑 APIキー未設定</div>
+  
 </header>
 
-<div class="api-setup" id="api-setup-area">
-  <div class="api-setup-title">🔑 Claude APIキーを設定してください</div>
-  <input type="password" id="apiKeyInput" placeholder="sk-ant-... を入力" />
-  <button class="api-save-btn" onclick="saveApiKey()">✅ 保存して始める</button>
-  <div class="api-status-bar" id="apiStatusBar">未設定 — APIキーがないとAIコメントが動きません</div>
-</div>
 
-<div class="api-setup" style="border-color:rgba(0,212,255,0.3);background:rgba(0,212,255,0.05);">
-  <div class="api-setup-title" style="color:var(--accent)">📲 LINE設定（任意）</div>
-  <input type="password" id="lineTokenInput" placeholder="Channel access token を入力" />
-  <input type="text" id="lineUserIdInput" placeholder="User ID（Uxxxxxxxxxx）を入力" style="margin-top:0" />
-  <button class="api-save-btn" style="background:var(--accent);margin-top:8px" onclick="saveLineSettings()">✅ LINE設定を保存</button>
-  <div class="api-status-bar" id="lineStatusBar">未設定 — 設定するとLINEに分析結果を送信できます</div>
-</div>
+
+
 
 <main>
   <div class="search-box">
@@ -242,28 +231,7 @@ function getLineUserId() {
     .replace(/\s+/g, '');           // 空白・改行を除去
 }
 
-let savedApiKey = '';
-let savedLineToken = '';
-let savedLineUserId = '';
-
-function saveLineSettings() {
-  const token = document.getElementById('lineTokenInput').value.trim().replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, '');
-  const userId = document.getElementById('lineUserIdInput').value.trim().replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, '');
-  if (!token || !userId) {
-    document.getElementById('lineStatusBar').textContent = '❌ トークンとUser IDの両方を入力してください';
-    return;
-  }
-  // localStorageに保存（ページを閉じても残る）
-  localStorage.setItem('kabuai_line_token', token);
-  localStorage.setItem('kabuai_line_userid', userId);
-  savedLineToken = token;
-  savedLineUserId = userId;
-  document.getElementById('lineStatusBar').textContent = '✅ LINE設定完了！分析後にLINE送信できます';
-  document.getElementById('lineStatusBar').className = 'api-status-bar ok';
-  document.getElementById('lineTokenInput').value = '●●●●●●●●●●●●';
-  document.getElementById('lineUserIdInput').value = userId.substring(0,4) + '●●●●●●●●●●';
-  alert('✅ LINE設定を保存しました！\nTOKEN長さ: ' + token.length + '\nUserID長さ: ' + userId.length);
-}
+// APIキーはサーバー側で管理（ユーザー入力不要）
 let currentAnalysis = null;
 
 const PROXIES = [
@@ -281,19 +249,7 @@ async function fetchWithProxy(url) {
   return null;
 }
 
-function saveApiKey() {
-  const key = document.getElementById('apiKeyInput').value.trim();
-  if (!key.startsWith('sk-ant-')) {
-    document.getElementById('apiStatusBar').textContent = '❌ 無効です。sk-ant-で始まるキーを入力してください';
-    return;
-  }
-  savedApiKey = key;
-  document.getElementById('apiStatusBar').textContent = '✅ APIキー設定完了！';
-  document.getElementById('apiStatusBar').className = 'api-status-bar ok';
-  document.getElementById('api-indicator').textContent = '✅ API設定済み';
-  document.getElementById('apiKeyInput').value = '●●●●●●●●●●●●';
-  document.getElementById('api-setup-area').style.cssText += 'background:rgba(0,255,136,0.05);border-color:rgba(0,255,136,0.3)';
-}
+
 
 function goBack() {
   document.getElementById('result-area').style.display = 'none';
@@ -309,15 +265,7 @@ function quickAnalyze(code) {
 async function analyzeStock() {
   const input = document.getElementById('stockInput').value.trim();
   if (!input) { alert('証券コードを入力してください'); return; }
-  if (!savedApiKey) { alert('先にAPIキーを設定してください 🔑'); return; }
-  
-  // localStorageから復元（念のため）
-  if (!savedLineToken) {
-    const t = localStorage.getItem('kabuai_line_token');
-    const u = localStorage.getItem('kabuai_line_userid');
-    if (t) savedLineToken = t;
-    if (u) savedLineUserId = u;
-  }
+
 
   document.getElementById('main-content').style.display = 'none';
   document.getElementById('result-area').style.display = 'none';
@@ -393,10 +341,10 @@ async function analyzeStock() {
 株価: ¥${stockInfo.price.toLocaleString()} (${chgSign}${Math.abs(stockInfo.chg)}%) / PER: ${stockInfo.per}倍 / PBR: ${stockInfo.pbr}倍
 配当利回り: ${stockInfo.div}% / 時価総額: ${stockInfo.cap} / 52週高値比: ${highRatio}%`;
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/analyze', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': savedApiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 400, messages: [{ role: 'user', content: prompt }] })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
     });
     const aiData = await res.json();
     document.getElementById('loading').classList.remove('show');
@@ -429,23 +377,7 @@ async function analyzeStock() {
 async function sendToLine() {
   if (!currentAnalysis) return;
   
-  // localStorageから必ず復元
-  if (!savedLineToken) savedLineToken = localStorage.getItem('kabuai_line_token') || '';
-  if (!savedLineUserId) savedLineUserId = localStorage.getItem('kabuai_line_userid') || '';
-  
-  const token = savedLineToken;
-  const userId = savedLineUserId;
-  
-  console.log('TOKEN長さ:', token.length, 'USERID長さ:', userId.length);
-  
-  if (!token || token.length < 10) {
-    alert('⚠️ LINEトークンが未設定です！\n上の「LINE設定」エリアでトークンを入力して「LINE設定を保存」を押してください！\n\nTOKEN: ' + token.length + '文字');
-    return;
-  }
-  if (!userId || userId.length < 5) {
-    alert('⚠️ User IDが未設定です！');
-    return;
-  }
+  // トークンはサーバー側で管理
 
   const btn = document.getElementById('line-btn');
   btn.disabled = true;
@@ -473,12 +405,12 @@ ${currentAnalysis.comment}
   resultEl.style.display = 'none';
 
   // CORSプロキシ候補を順番に試す
-  // Vercel APIエンドポイント経由で送信
+  // Vercel APIエンドポイント経由で送信（トークンはサーバー側）
   try {
     const res = await fetch('/api/line-send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, userId, message: msg }),
+      body: JSON.stringify({ message: msg }),
       signal: AbortSignal.timeout(10000)
     });
     const data = await res.json();
@@ -535,19 +467,7 @@ function setEval(id, val, th, lower) {
   }
 }
 
-// ページ読み込み時にlocalStorageから復元
-window.addEventListener('load', function() {
-  const token = localStorage.getItem('kabuai_line_token');
-  const userId = localStorage.getItem('kabuai_line_userid');
-  if (token && userId) {
-    savedLineToken = token;
-    savedLineUserId = userId;
-    document.getElementById('lineTokenInput').value = '●●●●●●●●●●●●';
-    document.getElementById('lineUserIdInput').value = userId.substring(0,4) + '●●●●●●●●●●';
-    document.getElementById('lineStatusBar').textContent = '✅ LINE設定完了！分析後にLINE送信できます';
-    document.getElementById('lineStatusBar').className = 'api-status-bar ok';
-  }
-});
+
 
 document.querySelectorAll('.chip').forEach(c => {
   c.addEventListener('click', function() {
