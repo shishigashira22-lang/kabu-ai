@@ -1,3 +1,4 @@
+// 銘柄名マスター（主要銘柄）
 const STOCK_INFO = {
   '7203': {name:'トヨタ自動車', sector:'自動車'},
   '6758': {name:'ソニーグループ', sector:'電機'},
@@ -19,6 +20,7 @@ const STOCK_INFO = {
   '3382': {name:'セブン&アイ', sector:'小売'},
   '2914': {name:'JT', sector:'食品'},
   '9020': {name:'JR東日本', sector:'鉄道'},
+  '6758': {name:'ソニーグループ', sector:'電機'},
   '1114': {name:'銘柄1114', sector:'その他'},
   '6203': {name:'銘柄6203', sector:'その他'},
 };
@@ -31,26 +33,40 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const codes = Object.keys(STOCK_INFO);
-    const counts = {};
+    const baseUrl = process.env.KV_REST_API_URL;
+    const token = process.env.KV_REST_API_TOKEN;
 
-    await Promise.all(codes.map(async code => {
+    // SCANで analyze_count_* のキーを全取得
+    let cursor = 0;
+    let allKeys = [];
+
+    do {
+      const r = await fetch(`${baseUrl}/scan/${cursor}?match=analyze_count_*&count=100`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await r.json();
+      cursor = parseInt(data.result[0]);
+      allKeys = allKeys.concat(data.result[1]);
+    } while (cursor !== 0);
+
+    if (allKeys.length === 0) {
+      return res.status(200).json({ ranking: [] });
+    }
+
+    // 各キーのカウントを取得
+    const counts = {};
+    await Promise.all(allKeys.map(async key => {
       try {
-        const r = await fetch(
-          `${process.env.KV_REST_API_URL}/get/analyze_count_${code}`,
-          {
-            method: 'GET',
-            headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` }
-          }
-        );
+        const code = key.replace('analyze_count_', '');
+        const r = await fetch(`${baseUrl}/get/${key}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         const data = await r.json();
         counts[code] = data.result ? parseInt(data.result) : 0;
-      } catch(e) {
-        counts[code] = 0;
-      }
+      } catch(e) {}
     }));
 
-    // 1回以上のものだけ、カウント順に並び替えてTOP5
+    // カウント順に並び替えてTOP5
     const ranking = Object.entries(counts)
       .filter(([, count]) => count > 0)
       .sort((a, b) => b[1] - a[1])
