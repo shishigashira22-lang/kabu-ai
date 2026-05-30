@@ -324,7 +324,7 @@ async function analyzeStock() {
   let stockInfo = { ...fallback, isReal: false };
 
   try {
-    setStep('📡 Yahoo Financeからデータ取得中...', `${ticker} に接続しています`);
+    setStep('📡 市場からデータ取得中...', `${ticker} に接続しています`);
     const data = await fetchWithProxy(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}`);
     if (data?.quoteResponse?.result?.[0]) {
       const q = data.quoteResponse.result[0];
