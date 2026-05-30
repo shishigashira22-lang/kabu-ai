@@ -1,56 +1,99 @@
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+import Stripe from 'stripe';
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const events = req.body?.events || [];
+  const sig = req.headers['stripe-signature'];
+  let event;
 
-  for (const event of events) {
-    // ユーザーがメッセージを送ってきた時
-    if (event.type === 'message' && event.message.type === 'text') {
-      const userId = event.source.userId;
-      const text = event.message.text.trim();
+  try {
+    const rawBody = await getRawBody(req);
+    event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (e) {
+    return res.status(400).json({ error: `Webhook error: ${e.message}` });
+  }
 
-      // KVにユーザーIDを保存（テキストをキーに）
-      await fetch(`${process.env.KV_REST_API_URL}/set/line_user_${userId}`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ value: userId })
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const meta = session.metadata || {};
+
+    const { stockCode, stockName, plan, score, per, pbr, div, cap, highRatio, sector, chg, price } = meta;
+
+    try {
+      // 1. KVから最新LINEユーザーIDを取得
+      const kvRes = await fetch(`${process.env.KV_REST_API_URL}/get/latest_line_user`, {
+        headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` }
       });
+      const kvData = await kvRes.json();
+      const lineUserId = kvData.result;
 
-      // 最新ユーザーIDも保存（決済時に使う）
-      await fetch(`${process.env.KV_REST_API_URL}/set/latest_line_user`, {
+      if (!lineUserId) {
+        console.error('LINE user ID not found');
+        return res.status(200).json({ received: true });
+      }
+
+      // 2. Claude APIでコメント生成
+      const chgSign = parseFloat(chg) >= 0 ? '▲' : '▼';
+      const prompt = plan === '詳細レポート'
+        ? `あなたは日本株の財務データアナリストです。以下のデータを元に、投資家向けの詳細な財務分析コメントを400文字以内の日本語で作成してください。投資推奨は含めず、データの特徴・割安・割高の判断・注目ポイントを詳しく記述してください。\n\n銘柄: ${stockName}（${stockCode}）/ 業種: ${sector}\n株価: ¥${Number(price).toLocaleString()} (${chgSign}${Math.abs(parseFloat(chg))}%) / PER: ${per}倍 / PBR: ${pbr}倍\n配当利回り: ${div}% / 時価総額: ${cap} / 52週高値比: ${highRatio}% / AIスコア: ${score}点`
+        : `あなたは日本株の財務データアナリストです。以下のデータを元に、投資家向けの客観的な財務分析コメントを200文字以内の日本語で作成してください。投資推奨は含めず、データの特徴のみ記述してください。\n\n銘柄: ${stockName}（${stockCode}）/ 業種: ${sector}\n株価: ¥${Number(price).toLocaleString()} (${chgSign}${Math.abs(parseFloat(chg))}%) / PER: ${per}倍 / PBR: ${pbr}倍\n配当利回り: ${div}% / 時価総額: ${cap} / 52週高値比: ${highRatio}% / AIスコア: ${score}点`;
+
+      const aiRes = await fetch('/api/analyze', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ value: userId })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
       });
+      const aiData = await aiRes.json();
+      const comment = aiData.content?.[0]?.text || '分析コメントの生成に失敗しました。';
 
-      // 返信メッセージ
-      await fetch('https://api.line.me/v2/bot/message/reply', {
+      // 3. LINEにレポート送信
+      const lineMessage = plan === '詳細レポート'
+        ? `📊 詳細分析レポート\n\n` +
+          `【${stockName}（#${stockCode}）】\n` +
+          `株価: ¥${Number(price).toLocaleString()} ${chgSign}${Math.abs(parseFloat(chg))}%\n` +
+          `━━━━━━━━━━━━\n` +
+          `PER: ${per}倍　PBR: ${pbr}倍\n` +
+          `配当: ${div}%　AIスコア: ${score}点\n` +
+          `52週高値比: ${highRatio}%\n` +
+          `━━━━━━━━━━━━\n` +
+          `🤖 AI分析コメント\n${comment}\n\n` +
+          `📈 かぶAI\nhttps://kabu-ai-steel.vercel.app`
+        : `💡 簡易分析レポート\n\n` +
+          `【${stockName}（#${stockCode}）】\n` +
+          `株価: ¥${Number(price).toLocaleString()} ${chgSign}${Math.abs(parseFloat(chg))}%\n` +
+          `AIスコア: ${score}点\n` +
+          `━━━━━━━━━━━━\n` +
+          `🤖 AI分析コメント\n${comment}\n\n` +
+          `📈 かぶAI\nhttps://kabu-ai-steel.vercel.app`;
+
+      await fetch('https://api.line.me/v2/bot/message/push', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.LINE_CHANNEL_TOKEN}`
         },
         body: JSON.stringify({
-          replyToken: event.replyToken,
-          messages: [{
-            type: 'text',
-            text: `✅ 登録完了！\nかぶAIへようこそ！\n\n分析レポートの購入後、このLINEに結果が届きます📊\n\nhttps://kabu-ai-steel.vercel.app`
-          }]
+          to: lineUserId,
+          messages: [{ type: 'text', text: lineMessage }]
         })
       });
+
+    } catch (e) {
+      console.error('Webhook processing error:', e);
     }
   }
 
-  res.status(200).json({ status: 'ok' });
+  res.status(200).json({ received: true });
+}
+
+// raw bodyを取得するヘルパー
+async function getRawBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', chunk => { data += chunk; });
+    req.on('end', () => resolve(data));
+    req.on('error', reject);
+  });
 }
