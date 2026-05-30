@@ -215,11 +215,8 @@
         <button class="search-btn" onclick="analyzeStock()">AI分析</button>
       </div>
     </div>
-    <div class="search-hint">
-      人気銘柄：<span onclick="quickAnalyze('7203')">7203</span>・
-      <span onclick="quickAnalyze('6723')">6723</span>・
-      <span onclick="quickAnalyze('9984')">9984</span>・
-      <span onclick="quickAnalyze('6758')">6758</span>
+    <div class="search-hint" id="popular-hint">
+      人気銘柄：読込中...
     </div>
 
     <div class="category-chips">
@@ -370,6 +367,17 @@ function updateMarketHero(results) {
 // ページ読み込み時に実行
 loadMarketPulse();
 
+// 人気銘柄ヒントを動的に更新
+fetch('/api/ranking')
+  .then(r => r.json())
+  .then(data => {
+    const hint = document.getElementById('popular-hint');
+    if (!hint || !data.ranking?.length) return;
+    hint.innerHTML = '人気銘柄：' + data.ranking
+      .map(s => `<span onclick="quickAnalyze('${s.code}')">${s.code}</span>`)
+      .join('・');
+  }).catch(() => {});
+
 let popularLoaded = false;
 
 // 人気ランキング取得
@@ -403,7 +411,8 @@ function renderPopularList(ranking) {
 }
 
 async function loadPopular() {
- 
+  if (popularLoaded) return;
+  popularLoaded = true;
   const ranking = await fetchPopular();
   renderPopularList(ranking);
 }
