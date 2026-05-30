@@ -29,34 +29,30 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
+  const apiKey = process.env.FMP_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'FMP API key not set', stocks: [] });
+
   try {
-    const tickers = WATCH_LIST.map(s => s.code + '.T').join(',');
+    // FMPで複数銘柄を一括取得
+    const symbols = WATCH_LIST.map(s => `${s.code}.T`).join(',');
     const response = await fetch(
-      `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${tickers}`,
-      {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json',
-        },
-        signal: AbortSignal.timeout(10000)
-      }
+      `https://financialmodelingprep.com/api/v3/quote/${symbols}?apikey=${apiKey}`,
+      { signal: AbortSignal.timeout(10000) }
     );
 
-    if (!response.ok) {
-      throw new Error(`Yahoo Finance error: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`FMP error: ${response.status}`);
 
     const data = await response.json();
-    const results = (data?.quoteResponse?.result || []).map(q => {
+
+    const results = (Array.isArray(data) ? data : []).map(q => {
       const code = q.symbol.replace('.T', '');
       const info = WATCH_LIST.find(s => s.code === code) || {};
       return {
         code,
-        name: info.name || q.shortName || code,
+        name: info.name || q.name || code,
         sector: info.sector || '-',
-        price: q.regularMarketPrice || 0,
-        chg: q.regularMarketChangePercent
-          ? +q.regularMarketChangePercent.toFixed(2) : 0,
+        price: q.price || 0,
+        chg: q.changesPercentage ? +q.changesPercentage.toFixed(2) : 0,
       };
     }).filter(s => s.price > 0);
 
