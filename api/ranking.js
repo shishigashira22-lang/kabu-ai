@@ -22,11 +22,7 @@ const STOCK_INFO = {
 };
 
 // 初期カウント（初期値として設定）
-const INITIAL_COUNTS = {
-  '7203': 120, '6723': 95, '9984': 88,
-  '6758': 76, '8035': 65, '4063': 54,
-  '6861': 48, '7974': 42, '8306': 38, '9432': 32,
-};
+const INITIAL_COUNTS = {};
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
