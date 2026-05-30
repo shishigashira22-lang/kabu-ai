@@ -27,7 +27,11 @@ export default async function handler(req, res) {
         headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` }
       });
       const kvData = await kvRes.json();
-      const lineUserId = kvData.result;
+      // resultがJSON文字列の場合はパースしてvalueを取得
+      let lineUserId = kvData.result;
+      if (lineUserId && lineUserId.startsWith('{')) {
+        try { lineUserId = JSON.parse(lineUserId).value; } catch(e) {}
+      }
 
       if (!lineUserId) {
         console.error('LINE user ID not found');
