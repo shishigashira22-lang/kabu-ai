@@ -403,8 +403,7 @@ function renderPopularList(ranking) {
 }
 
 async function loadPopular() {
-  if (popularLoaded) return;
-  popularLoaded = true;
+ 
   const ranking = await fetchPopular();
   renderPopularList(ranking);
 }
