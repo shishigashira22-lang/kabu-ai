@@ -13,6 +13,42 @@ async function getRawBody(req) {
   });
 }
 
+async function generateDetailedAnalysis(stockName, stockCode, per, pbr, div, cap, highRatio, score, baseComment) {
+  const prompt = `あなたは日本株の財務データアナリストです。以下のデータを元に、投資家向けの詳細な財務分析レポートを日本語で作成してください。
+
+銘柄: ${stockName}（${stockCode}）
+AIスコア: ${score}点
+PER: ${per}倍 / PBR: ${pbr}倍 / 配当利回り: ${div}% / 時価総額: ${cap} / 52週高値比: ${highRatio}%
+
+以下の4項目を必ず含めてください：
+①【バリュエーション評価】PER・PBRから見た割安・割高の判断
+②【配当・インカム評価】配当利回りの魅力度
+③【モメンタム評価】52週高値比から見た株価位置
+④【総合所見】投資家へのデータ的観点からの総括（200文字程度）
+
+※投資推奨は含めず、データの特徴のみ記述してください。`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    return data.content?.[0]?.text || baseComment;
+  } catch(e) {
+    return baseComment;
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
@@ -31,10 +67,39 @@ export default async function handler(req, res) {
     const session = event.data.object;
     const { stockCode, stockName, plan, comment, score, per, pbr, div, cap, highRatio } = session.metadata;
 
-    const message = `✅ 決済完了！かぶAI分析レポート
+    let analysisContent = comment;
+    let messageTitle = '📋 簡易レポート';
+
+    // 詳細レポートの場合はClaudeで再分析
+    if (plan === '詳細レポート') {
+      messageTitle = '📊 詳細レポート';
+      analysisContent = await generateDetailedAnalysis(
+        stockName, stockCode, per, pbr, div, cap, highRatio, score, comment
+      );
+    }
+
+    const message = plan === '詳細レポート'
+      ? `✅ 決済完了！かぶAI詳細分析レポート
 ━━━━━━━━━━━━
 🏢 ${stockName}（#${stockCode}）
-📊 プラン：${plan}
+📊 プラン：${messageTitle}
+🤖 AIスコア：${score}点
+━━━━━━━━━━━━
+📈 PER：${per}倍
+📈 PBR：${pbr}倍
+💰 配当利回り：${div}%
+🏛 時価総額：${cap}
+📉 52週高値比：${highRatio}%
+━━━━━━━━━━━━
+🔍 詳細AI分析：
+${analysisContent}
+━━━━━━━━━━━━
+⚠️ 投資助言ではありません
+📲 かぶAI: https://kabu-ai-steel.vercel.app`
+      : `✅ 決済完了！かぶAI簡易分析レポート
+━━━━━━━━━━━━
+🏢 ${stockName}（#${stockCode}）
+📊 プラン：${messageTitle}
 🤖 AIスコア：${score}点
 ━━━━━━━━━━━━
 📈 PER：${per}倍
@@ -44,7 +109,7 @@ export default async function handler(req, res) {
 📉 52週高値比：${highRatio}%
 ━━━━━━━━━━━━
 🤖 AI分析コメント：
-${comment}
+${analysisContent}
 ━━━━━━━━━━━━
 ⚠️ 投資助言ではありません
 📲 かぶAI: https://kabu-ai-steel.vercel.app`;
