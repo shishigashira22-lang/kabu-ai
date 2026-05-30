@@ -1,3 +1,6 @@
+// レートリミット用メモリ
+const rateLimit = new Map();
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -5,6 +8,16 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // ✅ レートリミット追加（1分間に5回まで）
+  const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const history = (rateLimit.get(ip) || []).filter(t => now - t < 60000);
+  if (history.length >= 5) {
+    return res.status(429).json({ error: '少し時間をおいて再試行してください' });
+  }
+  history.push(now);
+  rateLimit.set(ip, history);
 
   const { prompt } = req.body;
   const apiKey = process.env.ANTHROPIC_API_KEY;
