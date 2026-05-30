@@ -30,8 +30,9 @@ async function getLineUserId() {
   return process.env.LINE_USER_ID;
 }
 
-async function generateDetailedAnalysis(stockName, stockCode, per, pbr, div, cap, highRatio, score, baseComment) {
-  const prompt = `あなたは日本株の財務データアナリストです。以下のデータを元に、投資家向けの詳細な財務分析レポートを日本語で作成してください。
+async function generateAnalysis(stockName, stockCode, per, pbr, div, cap, highRatio, score, plan) {
+  const prompt = plan === '詳細レポート'
+    ? `あなたは日本株の財務データアナリストです。以下のデータを元に、投資家向けの詳細な財務分析レポートを日本語で作成してください。
 
 銘柄: ${stockName}（${stockCode}）
 AIスコア: ${score}点
@@ -43,27 +44,28 @@ PER: ${per}倍 / PBR: ${pbr}倍 / 配当利回り: ${div}% / 時価総額: ${cap
 ③【モメンタム評価】52週高値比から見た株価位置
 ④【総合所見】投資家へのデータ的観点からの総括（200文字程度）
 
-※投資推奨は含めず、データの特徴のみ記述してください。`;
+※投資推奨は含めず、データの特徴のみ記述してください。`
+    : `あなたは日本株の財務データアナリストです。以下のデータを元に、投資家向けの客観的な財務分析コメントを200文字以内の日本語で作成してください。投資推奨は含めず、データの特徴のみ記述してください。
 
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 800,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const data = await res.json();
-    return data.content?.[0]?.text || baseComment;
-  } catch(e) {
-    return baseComment;
-  }
+銘柄: ${stockName}（${stockCode}）
+AIスコア: ${score}点
+PER: ${per}倍 / PBR: ${pbr}倍 / 配当利回り: ${div}% / 時価総額: ${cap} / 52週高値比: ${highRatio}%`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  const data = await res.json();
+  return data.content?.[0]?.text || '分析コメントの生成に失敗しました。';
 }
 
 export default async function handler(req, res) {
@@ -82,19 +84,15 @@ export default async function handler(req, res) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    const { stockCode, stockName, plan, comment, score, per, pbr, div, cap, highRatio } = session.metadata;
+    const { stockCode, stockName, plan, score, per, pbr, div, cap, highRatio } = session.metadata;
 
     const lineUserId = await getLineUserId();
 
-    let analysisContent = comment;
-    let messageTitle = '📋 簡易レポート';
+    const analysisContent = await generateAnalysis(
+      stockName, stockCode, per, pbr, div, cap, highRatio, score, plan
+    );
 
-    if (plan === '詳細レポート') {
-      messageTitle = '📊 詳細レポート';
-      analysisContent = await generateDetailedAnalysis(
-        stockName, stockCode, per, pbr, div, cap, highRatio, score, comment
-      );
-    }
+    const messageTitle = plan === '詳細レポート' ? '📊 詳細レポート' : '📋 簡易レポート';
 
     const message = plan === '詳細レポート'
       ? `✅ 決済完了！かぶAI詳細分析レポート
