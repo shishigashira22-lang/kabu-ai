@@ -1,16 +1,14 @@
 import Stripe from 'stripe';
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { amount, stockCode, stockName, plan, comment, score, per, pbr, div, cap, highRatio } = req.body;
+  const { amount, stockCode, stockName, plan, score, per, pbr, div, cap, highRatio, sector, chg, price } = req.body;
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -29,16 +27,18 @@ export default async function handler(req, res) {
       success_url: `${process.env.NEXT_PUBLIC_URL || 'https://kabu-ai-steel.vercel.app'}/?success=1&code=${stockCode}`,
       cancel_url: `${process.env.NEXT_PUBLIC_URL || 'https://kabu-ai-steel.vercel.app'}/`,
       metadata: {
-        stockCode,
-        stockName,
-        plan,
-        comment: (comment || '').slice(0, 500),
+        stockCode: stockCode || '',
+        stockName: stockName || '',
+        plan: plan || '',
         score: String(score || ''),
         per: String(per || ''),
         pbr: String(pbr || ''),
         div: String(div || ''),
         cap: cap || '',
         highRatio: String(highRatio || ''),
+        sector: sector || '',
+        chg: String(chg || ''),
+        price: String(price || ''),
       }
     }, {
       idempotencyKey: `${stockCode}-${Date.now()}`
