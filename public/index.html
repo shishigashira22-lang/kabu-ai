@@ -368,7 +368,14 @@ async function startPayment(amount, plan) {
         amount,
         plan,
         stockCode: currentAnalysis.code,
-        stockName: currentAnalysis.name
+        stockName: currentAnalysis.name,
+        comment: currentAnalysis.comment,
+        score: currentAnalysis.score,
+        per: currentAnalysis.per,
+        pbr: currentAnalysis.pbr,
+        div: currentAnalysis.div,
+        cap: currentAnalysis.cap,
+        highRatio: currentAnalysis.highRatio
       })
     });
     const data = await res.json();
