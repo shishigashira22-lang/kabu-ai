@@ -348,37 +348,13 @@ async function fetchWithProxy(url) {
 
 // 複数銘柄を並列取得
 async function fetchRanking() {
-  const results = [];
-  const chunkSize = 5;
-  
-  for (let i = 0; i < WATCH_LIST.length; i += chunkSize) {
-    const chunk = WATCH_LIST.slice(i, i + chunkSize);
-    const tickers = chunk.map(s => s.code + '.T').join(',');
-    
-    try {
-      const data = await fetchWithProxy(
-        `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${tickers}`
-      );
-      if (data?.quoteResponse?.result) {
-        data.quoteResponse.result.forEach(q => {
-          const code = q.symbol.replace('.T', '');
-          const info = WATCH_LIST.find(s => s.code === code) || {};
-          if (q.regularMarketPrice) {
-            results.push({
-              code,
-              name: info.name || q.shortName || code,
-              sector: info.sector || '-',
-              price: q.regularMarketPrice,
-              chg: q.regularMarketChangePercent
-                ? +q.regularMarketChangePercent.toFixed(2) : 0,
-            });
-          }
-        });
-      }
-    } catch(e) {}
-    await new Promise(r => setTimeout(r, 300));
+  try {
+    const res = await fetch('/api/ranking');
+    const data = await res.json();
+    return data.stocks?.length > 0 ? data.stocks : null;
+  } catch(e) {
+    return null;
   }
-  return results.length > 0 ? results : null;
 }
 
 function renderRankingList(containerId, updatedId, stocks, isRising) {
