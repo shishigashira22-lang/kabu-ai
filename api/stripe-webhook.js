@@ -27,7 +27,6 @@ export default async function handler(req, res) {
         headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` }
       });
       const kvData = await kvRes.json();
-      // resultがJSON文字列の場合はパースしてvalueを取得
       let lineUserId = kvData.result;
       if (lineUserId && lineUserId.startsWith('{')) {
         try { lineUserId = JSON.parse(lineUserId).value; } catch(e) {}
@@ -41,27 +40,8 @@ export default async function handler(req, res) {
       // 2. Claude APIでコメント生成
       const chgSign = parseFloat(chg) >= 0 ? '▲' : '▼';
       const prompt = plan === '詳細レポート'
-        ? `あなたは日本株の専門アナリストです。以下の財務データと、あなたが持っている${stockName}（${stockCode}）に関する知識を使って、投資家向けの詳細分析レポートを日本語で作成してください。必ず600文字以上800文字以内で書いてください。投資推奨は含めないでください。
-
-【財務データ】
-銘柄: ${stockName}（${stockCode}）/ 業種: ${sector}
-株価: ¥${Number(price).toLocaleString()} (${chgSign}${Math.abs(parseFloat(chg))}%)
-PER: ${per}倍 / PBR: ${pbr}倍 / 配当利回り: ${div}%
-時価総額: ${cap} / 52週高値比: ${highRatio}% / AIスコア: ${score}点
-
-【以下の6項目を各100文字以上で必ず書いてください】
-①会社概要：${stockName}は何をしている会社か
-②経営理念・強み：企業の特徴や競争優位性
-③成長性：売上・利益の傾向や今後の成長ドライバー
-④財務評価：PER${per}倍・PBR${pbr}倍・配当${div}%を業界水準と比較して評価
-⑤株価モメンタム：52週高値比${highRatio}%から見た現在の株価ポジション
-⑥総合評価：注目すべきポイントと投資家が意識すべきリスク`
-        : `あなたは日本株の専門アナリストです。以下の財務データを元に、${stockName}（${stockCode}）の簡易分析コメントを150文字以上200文字以内の日本語で作成してください。投資推奨は含めず、最も注目すべき財務上の特徴を具体的な数値を使って記述してください。
-
-銘柄: ${stockName}（${stockCode}）/ 業種: ${sector}
-株価: ¥${Number(price).toLocaleString()} (${chgSign}${Math.abs(parseFloat(chg))}%)
-PER: ${per}倍 / PBR: ${pbr}倍 / 配当利回り: ${div}%
-時価総額: ${cap} / 52週高値比: ${highRatio}% / AIスコア: ${score}点`;
+        ? `あなたは日本株の財務データアナリストです。以下のデータを元に、投資家向けの詳細な財務分析コメントを400文字以内の日本語で作成してください。投資推奨は含めず、データの特徴・割安・割高の判断・注目ポイントを詳しく記述してください。\n\n銘柄: ${stockName}（${stockCode}）/ 業種: ${sector}\n株価: ¥${Number(price).toLocaleString()} (${chgSign}${Math.abs(parseFloat(chg))}%) / PER: ${per}倍 / PBR: ${pbr}倍\n配当利回り: ${div}% / 時価総額: ${cap} / 52週高値比: ${highRatio}% / AIスコア: ${score}点`
+        : `あなたは日本株の財務データアナリストです。以下のデータを元に、投資家向けの客観的な財務分析コメントを200文字以内の日本語で作成してください。投資推奨は含めず、データの特徴のみ記述してください。\n\n銘柄: ${stockName}（${stockCode}）/ 業種: ${sector}\n株価: ¥${Number(price).toLocaleString()} (${chgSign}${Math.abs(parseFloat(chg))}%) / PER: ${per}倍 / PBR: ${pbr}倍\n配当利回り: ${div}% / 時価総額: ${cap} / 52週高値比: ${highRatio}% / AIスコア: ${score}点`;
 
       const aiRes = await fetch('https://kabu-ai-steel.vercel.app/api/analyze', {
         method: 'POST',
