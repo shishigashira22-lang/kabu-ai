@@ -18,13 +18,6 @@
     background-image: linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px), linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);
     background-size:40px 40px; pointer-events:none;
   }
-  .api-setup { background:rgba(255,170,0,0.08); border:1px solid rgba(255,170,0,0.3); border-radius:12px; padding:12px 16px; margin:12px 16px; }
-  .api-setup-title { font-size:11px; color:var(--warn); font-weight:700; margin-bottom:8px; }
-  .api-setup input { width:100%; background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:8px; padding:8px 12px; color:var(--text); font-size:12px; font-family:'Space Mono',monospace; outline:none; margin-bottom:8px; }
-  .api-setup input:focus { border-color:var(--accent); }
-  .api-save-btn { width:100%; background:var(--warn); color:#000; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
-  .api-status-bar { display:flex; align-items:center; gap:6px; margin-top:8px; font-size:11px; color:var(--text2); }
-  .api-status-bar.ok { color:var(--accent2); }
   header { position:sticky; top:0; z-index:100; background:rgba(10,14,26,0.95); backdrop-filter:blur(20px); border-bottom:1px solid var(--border); padding:12px 16px; display:flex; align-items:center; justify-content:space-between; }
   .logo { font-family:'Space Mono',monospace; font-size:20px; font-weight:700; color:var(--accent); letter-spacing:-1px; }
   .logo span { color:var(--accent2); }
@@ -74,7 +67,6 @@
   .data-source-tag { display:inline-flex; align-items:center; gap:4px; background:rgba(0,255,136,0.1); border:1px solid rgba(0,255,136,0.2); border-radius:6px; padding:3px 8px; font-size:10px; color:var(--accent2); margin-bottom:12px; }
   .ai-comment { background:rgba(0,212,255,0.05); border:1px solid rgba(0,212,255,0.2); border-radius:12px; padding:14px; margin-bottom:14px; min-height:80px; }
   .ai-comment-label { font-size:11px; color:var(--accent); font-weight:700; margin-bottom:8px; }
-  .ai-comment-text { font-size:13px; color:var(--text); line-height:1.7; }
   .typing::after { content:'▋'; animation:blink 0.7s infinite; color:var(--accent); }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
   .loading { display:none; text-align:center; padding:40px 20px; }
@@ -83,17 +75,6 @@
   @keyframes spin { to { transform:rotate(360deg); } }
   .loading-text { font-size:14px; color:var(--text2); margin-bottom:6px; }
   .loading-step { font-size:12px; color:var(--accent); }
-
-  /* LINE ボタン */
-  .line-btn { width:100%; background:#06c755; color:white; border:none; border-radius:12px; padding:14px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:10px; transition:all 0.2s; font-family:inherit; }
-  .line-btn:hover { background:#05b34c; transform:translateY(-1px); }
-  .line-btn:disabled { background:#444; cursor:not-allowed; transform:none; }
-
-  /* LINE送信結果 */
-  .line-result { border-radius:10px; padding:12px; font-size:13px; margin-bottom:10px; text-align:center; display:none; }
-  .line-result.success { background:rgba(0,255,136,0.1); border:1px solid rgba(0,255,136,0.3); color:var(--accent2); }
-  .line-result.error { background:rgba(255,68,102,0.1); border:1px solid rgba(255,68,102,0.3); color:var(--red); }
-
   .premium-gate { background:linear-gradient(135deg,rgba(255,170,0,0.1),rgba(255,68,102,0.1)); border:1px solid rgba(255,170,0,0.3); border-radius:12px; padding:16px; text-align:center; }
   .premium-gate .title { font-size:14px; font-weight:700; color:var(--warn); margin-bottom:6px; }
   .premium-gate .desc { font-size:12px; color:var(--text2); margin-bottom:12px; }
@@ -109,25 +90,13 @@
   .back-btn { background:transparent; border:1px solid var(--border); color:var(--text2); border-radius:10px; padding:10px 16px; font-size:13px; cursor:pointer; font-family:inherit; margin-bottom:16px; display:flex; align-items:center; gap:6px; transition:all 0.2s; }
   .back-btn:hover { border-color:var(--accent); color:var(--accent); }
   footer { padding:24px 16px; text-align:center; color:var(--text2); font-size:11px; line-height:1.8; border-top:1px solid var(--border); margin-top:20px; }
-
   /* コメントぼかし */
   .comment-wrap { position:relative; }
   .comment-preview { font-size:13px; color:var(--text); line-height:1.7; }
-  .comment-blur {
-    position:relative; margin-top:4px;
-    max-height:48px; overflow:hidden;
-  }
-  .comment-blur::after {
-    content:''; position:absolute; bottom:0; left:0; right:0; height:48px;
-    background:linear-gradient(transparent, rgba(26,34,54,0.97));
-    pointer-events:none;
-  }
+  .comment-blur { position:relative; margin-top:4px; max-height:48px; overflow:hidden; }
+  .comment-blur::after { content:''; position:absolute; bottom:0; left:0; right:0; height:48px; background:linear-gradient(transparent, rgba(26,34,54,0.97)); pointer-events:none; }
   .comment-blur-text { font-size:13px; color:var(--text); line-height:1.7; filter:blur(4px); user-select:none; }
-  .comment-lock {
-    text-align:center; padding:10px 0 4px;
-    font-size:12px; color:var(--text2);
-    display:flex; align-items:center; justify-content:center; gap:6px;
-  }
+  .comment-lock { text-align:center; padding:10px 0 4px; font-size:12px; color:var(--text2); display:flex; align-items:center; justify-content:center; gap:6px; }
   .lock-icon { font-size:14px; }
 </style>
 </head>
@@ -135,12 +104,7 @@
 
 <header>
   <div class="logo">かぶ<span>AI</span></div>
-  
 </header>
-
-
-
-
 
 <main>
   <div class="search-box">
@@ -188,32 +152,29 @@
       <div class="ai-comment">
         <div class="ai-comment-label">🤖 Claude AI 分析コメント</div>
         <div class="comment-wrap">
-          <!-- 無料表示部分（最初の1文） -->
           <div class="comment-preview" id="res-comment-preview">分析中...</div>
-          <!-- ぼかし部分（続き） -->
           <div class="comment-blur" id="comment-blur-area">
             <div class="comment-blur-text" id="res-comment-blur"></div>
           </div>
           <div class="comment-lock" id="comment-lock">
             <span class="lock-icon">🔒</span>
-            <span>続きはLINEで受け取る</span>
+            <span>続きは決済後にLINEでお届け</span>
           </div>
         </div>
       </div>
 
- 
-    <div class="premium-gate">
-  <div class="title">📊 詳細分析レポート</div>
-  <div class="desc">決済完了後にLINEで全文レポートをお届けします！📲</div>
-  <div style="display:flex; gap:10px; margin-top:12px;">
-    <button class="pay-btn" style="flex:1; background:linear-gradient(135deg,#00d4ff,#0099cc); font-size:13px;" onclick="startPayment(120,'簡易レポート')">
-      💡 簡易レポート<br><span style="font-size:16px; font-weight:900;">120円</span>
-    </button>
-    <button class="pay-btn" style="flex:1; font-size:13px;" onclick="startPayment(260,'詳細レポート')">
-      📊 詳細レポート<br><span style="font-size:16px; font-weight:900;">260円</span>
-    </button>
-  </div>
-</div> 
+      <div class="premium-gate">
+        <div class="title">📊 詳細分析レポート</div>
+        <div class="desc">決済完了後にLINEで全文レポートをお届けします！📲</div>
+        <div style="display:flex; gap:10px; margin-top:12px;">
+          <button class="pay-btn" style="flex:1; background:linear-gradient(135deg,#00d4ff,#0099cc); font-size:13px;" onclick="startPayment(120,'簡易レポート')">
+            💡 簡易レポート<br><span style="font-size:16px; font-weight:900;">120円</span>
+          </button>
+          <button class="pay-btn" style="flex:1; font-size:13px;" onclick="startPayment(260,'詳細レポート')">
+            📊 詳細レポート<br><span style="font-size:16px; font-weight:900;">260円</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -243,26 +204,11 @@
 <footer>
   ※ 本ツールが提供する情報はデータ提供のみを目的としており、<br>
   投資助言・売買推奨ではありません。投資判断はご自身の責任で行ってください。<br><br>
-  📡 株価データ：Yahoo Finance（約15分遅延）<br>
+  📡 株価データ：市場データ（約15分遅延）<br>
   © 2026 かぶAI
 </footer>
 
 <script>
-// LINE設定は画面の入力欄から取得
-function getLineToken() { 
-  return document.getElementById('lineTokenInput').value
-    .trim()
-    .replace(/[^ -~]/g, '')  // ASCII以外を除去
-    .replace(/\s+/g, '');           // 空白・改行を除去
-}
-function getLineUserId() { 
-  return document.getElementById('lineUserIdInput').value
-    .trim()
-    .replace(/[^ -~]/g, '')  // ASCII以外を除去
-    .replace(/\s+/g, '');           // 空白・改行を除去
-}
-
-// APIキーはサーバー側で管理（ユーザー入力不要）
 let currentAnalysis = null;
 
 const PROXIES = [
@@ -280,12 +226,9 @@ async function fetchWithProxy(url) {
   return null;
 }
 
-
-
 function goBack() {
   document.getElementById('result-area').style.display = 'none';
   document.getElementById('main-content').style.display = 'block';
-  document.getElementById('line-result').style.display = 'none';
 }
 
 function quickAnalyze(code) {
@@ -297,10 +240,8 @@ async function analyzeStock() {
   const input = document.getElementById('stockInput').value.trim();
   if (!input) { alert('証券コードを入力してください'); return; }
 
-
   document.getElementById('main-content').style.display = 'none';
   document.getElementById('result-area').style.display = 'none';
-  document.getElementById('line-result').style.display = 'none';
   document.getElementById('loading').classList.add('show');
   window.scrollTo(0, 0);
 
@@ -355,7 +296,7 @@ async function analyzeStock() {
   document.getElementById('m-cap').textContent = stockInfo.cap;
   document.getElementById('m-high').textContent = highRatio + '%';
   document.getElementById('m-sector').textContent = stockInfo.sector;
-  document.getElementById('data-tag').textContent = stockInfo.isReal ? '📡 Yahoo Finance（リアルデータ）' : '📋 デモデータ';
+  document.getElementById('data-tag').textContent = stockInfo.isReal ? '📡 リアルタイムデータ' : '📋 デモデータ';
   document.getElementById('data-tag').style.color = stockInfo.isReal ? 'var(--accent2)' : 'var(--warn)';
 
   setEval('e-per', stockInfo.per, [15,25], true);
@@ -383,7 +324,6 @@ async function analyzeStock() {
 
     const aiComment = aiData.content?.[0]?.text || 'コメント生成に失敗しました';
 
-    // 分析データを保存（LINE送信用）
     currentAnalysis = {
       name: stockInfo.name,
       code: input,
@@ -400,10 +340,8 @@ async function analyzeStock() {
     const preview = sentences[0] || aiComment;
     const rest = sentences.slice(1).join('') || '';
 
-    // プレビュー部分をタイピングアニメーションで表示
     typeText('res-comment-preview', preview);
 
-    // ぼかし部分をセット（残りのテキスト）
     if (rest) {
       document.getElementById('res-comment-blur').textContent = rest;
       document.getElementById('comment-blur-area').style.display = 'block';
@@ -416,68 +354,30 @@ async function analyzeStock() {
   } catch(e) {
     document.getElementById('loading').classList.remove('show');
     document.getElementById('result-area').style.display = 'block';
-    document.getElementById('res-comment').textContent = `エラー: ${e.message}`;
+    document.getElementById('res-comment-preview').textContent = `エラー: ${e.message}`;
   }
 }
 
-// LINE送信
-async function sendToLine() {
+async function startPayment(amount, plan) {
   if (!currentAnalysis) return;
-  
-  // トークンはサーバー側で管理
-
-  const btn = document.getElementById('line-btn');
-  btn.disabled = true;
-  btn.style.display = 'flex';
-  btn.textContent = '📲 LINEに送信中...';
-
-  const msg = `📊 かぶAI 分析レポート
-━━━━━━━━━━━━
-🏢 ${currentAnalysis.name}（#${currentAnalysis.code}）
-💴 ¥${Number(currentAnalysis.price).toLocaleString()} ${currentAnalysis.chgSign}${Math.abs(currentAnalysis.chg)}%
-🤖 AIスコア：${currentAnalysis.score}点
-━━━━━━━━━━━━
-📈 PER：${currentAnalysis.per}倍
-📈 PBR：${currentAnalysis.pbr}倍
-💰 配当利回り：${currentAnalysis.div}%
-🏛 時価総額：${currentAnalysis.cap}
-📉 52週高値比：${currentAnalysis.highRatio}%
-━━━━━━━━━━━━
-🤖 AI分析：
-${currentAnalysis.comment}
-━━━━━━━━━━━━
-⚠️ 投資助言ではありません`;
-
-  const resultEl = document.getElementById('line-result');
-  resultEl.style.display = 'none';
-
-  // CORSプロキシ候補を順番に試す
-  // Vercel APIエンドポイント経由で送信（トークンはサーバー側）
   try {
-    const res = await fetch('/api/line-send', {
+    const res = await fetch('/api/stripe-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: msg }),
-      signal: AbortSignal.timeout(10000)
+      body: JSON.stringify({
+        amount,
+        plan,
+        stockCode: currentAnalysis.code,
+        stockName: currentAnalysis.name
+      })
     });
     const data = await res.json();
-    if (res.ok && data.success) {
-      resultEl.textContent = '✅ LINEに送信しました！スマホを確認してください 📱';
-      resultEl.className = 'line-result success';
-    } else {
-      resultEl.textContent = '⚠️ 送信エラー: ' + (data.error || '不明なエラー');
-      resultEl.className = 'line-result error';
+    if (data.url) {
+      window.location.href = data.url;
     }
-    resultEl.style.display = 'block';
   } catch(e) {
-    resultEl.textContent = '⚠️ エラー: ' + e.message;
-    resultEl.className = 'line-result error';
-    resultEl.style.display = 'block';
+    alert('エラーが発生しました: ' + e.message);
   }
-
-  btn.disabled = false;
-  btn.style.display = 'flex';
-  btn.textContent = '📲 この分析をLINEで受け取る';
 }
 
 function typeText(id, text) {
@@ -515,8 +415,6 @@ function setEval(id, val, th, lower) {
   }
 }
 
-
-
 document.querySelectorAll('.chip').forEach(c => {
   c.addEventListener('click', function() {
     document.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
@@ -524,27 +422,6 @@ document.querySelectorAll('.chip').forEach(c => {
   });
 });
 document.getElementById('stockInput').addEventListener('keypress', e => { if(e.key==='Enter') analyzeStock(); });
-async function startPayment(amount, plan) {
-  if (!currentAnalysis) return;
-  try {
-    const res = await fetch('/api/stripe-checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount,
-        plan,
-        stockCode: currentAnalysis.code,
-        stockName: currentAnalysis.name
-      })
-    });
-    const data = await res.json();
-    if (data.url) {
-      window.location.href = data.url;
-    }
-  } catch(e) {
-    alert('エラーが発生しました: ' + e.message);
-  }
-}
 </script>
 </body>
 </html>
