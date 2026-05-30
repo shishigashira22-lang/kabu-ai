@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { amount, stockCode, stockName, plan } = req.body;
+  const { amount, stockCode, stockName, plan, comment, score, per, pbr, div, cap, highRatio } = req.body;
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -32,10 +32,17 @@ export default async function handler(req, res) {
         stockCode,
         stockName,
         plan,
+        comment: (comment || '').slice(0, 500),
+        score: String(score || ''),
+        per: String(per || ''),
+        pbr: String(pbr || ''),
+        div: String(div || ''),
+        cap: cap || '',
+        highRatio: String(highRatio || ''),
       }
-   }, {
-    idempotencyKey: `${stockCode}-${Date.now()}`
-  }); 
+    }, {
+      idempotencyKey: `${stockCode}-${Date.now()}`
+    });
 
     res.status(200).json({ url: session.url });
   } catch (e) {
