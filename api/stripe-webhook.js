@@ -14,26 +14,21 @@ async function getRawBody(req) {
 }
 
 // KVからユーザーIDを取得
-async function getLineUserId(sessionId) {
-  // セッションIDに紐付いたユーザーIDを取得
-  try {
-    const res = await fetch(`${process.env.KV_REST_API_URL}/get/session_${sessionId}`, {
-      headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` }
-    });
-    const data = await res.json();
-    if (data.result) return data.result;
-  } catch(e) {}
-
-  // なければ最新ユーザーIDを取得
+async function getLineUserId() {
   try {
     const res = await fetch(`${process.env.KV_REST_API_URL}/get/latest_line_user`, {
       headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` }
     });
     const data = await res.json();
-    if (data.result) return data.result;
+    if (data.result) {
+      try {
+        const parsed = JSON.parse(data.result);
+        return parsed.value || data.result;
+      } catch(e) {
+        return data.result;
+      }
+    }
   } catch(e) {}
-
-  // 最終手段：環境変数のユーザーID
   return process.env.LINE_USER_ID;
 }
 
@@ -91,8 +86,8 @@ export default async function handler(req, res) {
     const session = event.data.object;
     const { stockCode, stockName, plan, comment, score, per, pbr, div, cap, highRatio } = session.metadata;
 
-    // ユーザーIDを取得
-    const lineUserId = await getLineUserId(session.id);
+    // KVからユーザーIDを取得
+    const lineUserId = await getLineUserId();
 
     let analysisContent = comment;
     let messageTitle = '📋 簡易レポート';
