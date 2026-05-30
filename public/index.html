@@ -283,17 +283,13 @@ let currentAnalysis = null;
 
 // ── マーケットパルス取得 ──────────────────────────────────
 async function loadMarketPulse() {
-  const symbols = ['^N225', '^TOPIX', 'USDJPY=X', '^VIX'];
   const ids     = ['nk225', 'topix', 'usdjpy', 'vix'];
   const isPercent = [true, true, true, false];
 
   try {
-    const res = await fetch(
-      `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}&fields=regularMarketPrice,regularMarketChangePercent,regularMarketChange`,
-      { headers: { 'Accept': 'application/json' } }
-    );
+    const res = await fetch('/api/market-pulse');
     const data = await res.json();
-    const results = data?.quoteResponse?.result || [];
+    const results = data?.results || [];
 
     results.forEach((q, i) => {
       const valEl = document.getElementById(`p-${ids[i]}`);
