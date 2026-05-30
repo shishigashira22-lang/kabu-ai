@@ -209,11 +209,18 @@
         📲 この分析をLINEで受け取る
       </button>
 
-      <div class="premium-gate">
-        <div class="title">🔒 詳細分析レポート</div>
-        <div class="desc">テクニカル分析・買い時判定・目標株価・リスク評価を含む完全版</div>
-        <button class="pay-btn">980円で詳細を見る 📊</button>
-      </div>
+    <div class="premium-gate">
+  <div class="title">📊 詳細分析レポート</div>
+  <div class="desc">テクニカル分析・買い時判定・目標株価・リスク評価を含む完全版</div>
+  <div style="display:flex; gap:10px; margin-top:12px;">
+    <button class="pay-btn" style="flex:1; background:linear-gradient(135deg,#00d4ff,#0099cc); font-size:13px;" onclick="startPayment(120,'簡易レポート')">
+      💡 簡易レポート<br><span style="font-size:16px; font-weight:900;">120円</span>
+    </button>
+    <button class="pay-btn" style="flex:1; font-size:13px;" onclick="startPayment(260,'詳細レポート')">
+      📊 詳細レポート<br><span style="font-size:16px; font-weight:900;">260円</span>
+    </button>
+  </div>
+</div> 
     </div>
   </div>
 
@@ -524,6 +531,27 @@ document.querySelectorAll('.chip').forEach(c => {
   });
 });
 document.getElementById('stockInput').addEventListener('keypress', e => { if(e.key==='Enter') analyzeStock(); });
+async function startPayment(amount, plan) {
+  if (!currentAnalysis) return;
+  try {
+    const res = await fetch('/api/stripe-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount,
+        plan,
+        stockCode: currentAnalysis.code,
+        stockName: currentAnalysis.name
+      })
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    }
+  } catch(e) {
+    alert('エラーが発生しました: ' + e.message);
+  }
+}
 </script>
 </body>
 </html>
