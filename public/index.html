@@ -232,20 +232,20 @@
         <div>
           <div class="market-label">市場環境スコア</div>
           <div class="market-score-wrap">
-            <div class="market-score-num">62</div>
-            <div class="market-score-label">やや強気 📈</div>
+            <div class="market-score-num" id="market-score-num">--</div>
+            <div class="market-score-label" id="market-score-label">取得中...</div>
           </div>
         </div>
-        <div class="market-badge">⚡ 半導体に注目</div>
+        <div class="market-badge" id="market-badge">📡 読込中</div>
       </div>
-      <div class="market-desc">日経平均は66,000円台を維持。米国市場の安定を受け、輸出関連株に買いが集まっています。</div>
+      <div class="market-desc" id="market-desc">市場データを取得しています...</div>
     </div>
 
     <div class="pulse-grid">
-      <div class="pulse-card"><div class="pulse-name">日経225</div><div class="pulse-val">66,330</div><div class="pulse-chg up">▲ +2.53%</div></div>
-      <div class="pulse-card"><div class="pulse-name">TOPIX</div><div class="pulse-val">417.9</div><div class="pulse-chg up">▲ +1.06%</div></div>
-      <div class="pulse-card"><div class="pulse-name">USD/JPY</div><div class="pulse-val">149.2</div><div class="pulse-chg down">▼ -0.31%</div></div>
-      <div class="pulse-card"><div class="pulse-name">VIX</div><div class="pulse-val">16.8</div><div class="pulse-chg up">▲ +0.8</div></div>
+      <div class="pulse-card"><div class="pulse-name">日経225</div><div class="pulse-val" id="p-nk225">--</div><div class="pulse-chg" id="c-nk225">--</div></div>
+      <div class="pulse-card"><div class="pulse-name">TOPIX</div><div class="pulse-val" id="p-topix">--</div><div class="pulse-chg" id="c-topix">--</div></div>
+      <div class="pulse-card"><div class="pulse-name">USD/JPY</div><div class="pulse-val" id="p-usdjpy">--</div><div class="pulse-chg" id="c-usdjpy">--</div></div>
+      <div class="pulse-card"><div class="pulse-name">VIX</div><div class="pulse-val" id="p-vix">--</div><div class="pulse-chg" id="c-vix">--</div></div>
     </div>
 
     <!-- AIピックアップ -->
@@ -280,6 +280,100 @@
 
 <script>
 let currentAnalysis = null;
+
+// ── マーケットパルス取得 ──────────────────────────────────
+async function loadMarketPulse() {
+  const symbols = ['^N225', '^TOPIX', 'USDJPY=X', '^VIX'];
+  const ids     = ['nk225', 'topix', 'usdjpy', 'vix'];
+  const isPercent = [true, true, true, false];
+
+  try {
+    const res = await fetch(
+      `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}&fields=regularMarketPrice,regularMarketChangePercent,regularMarketChange`,
+      { headers: { 'Accept': 'application/json' } }
+    );
+    const data = await res.json();
+    const results = data?.quoteResponse?.result || [];
+
+    results.forEach((q, i) => {
+      const valEl = document.getElementById(`p-${ids[i]}`);
+      const chgEl = document.getElementById(`c-${ids[i]}`);
+      if (!valEl || !chgEl) return;
+
+      const price = q.regularMarketPrice;
+      const chgPct = q.regularMarketChangePercent;
+      const chgAbs = q.regularMarketChange;
+      const up = chgPct >= 0;
+
+      if (ids[i] === 'nk225') {
+        valEl.textContent = price.toLocaleString('ja-JP', {maximumFractionDigits:0});
+      } else {
+        valEl.textContent = price.toFixed(1);
+      }
+
+      chgEl.className = `pulse-chg ${up ? 'up' : 'down'}`;
+      if (isPercent[i]) {
+        chgEl.textContent = `${up ? '▲' : '▼'} ${up ? '+' : ''}${chgPct.toFixed(2)}%`;
+      } else {
+        chgEl.textContent = `${up ? '▲' : '▼'} ${up ? '+' : ''}${chgAbs.toFixed(1)}`;
+      }
+    });
+
+    updateMarketHero(results);
+
+  } catch(e) {
+    console.warn('MarketPulse fetch failed:', e);
+    ['nk225','topix','usdjpy','vix'].forEach(id => {
+      const el = document.getElementById(`p-${id}`);
+      if (el) el.textContent = '--';
+    });
+    document.getElementById('market-score-num').textContent = '--';
+    document.getElementById('market-score-label').textContent = '取得失敗';
+    document.getElementById('market-badge').textContent = '⚠️ エラー';
+    document.getElementById('market-desc').textContent = 'データの取得に失敗しました。';
+  }
+}
+
+function updateMarketHero(results) {
+  const nk = results.find(r => r.symbol === '^N225');
+  const vix = results.find(r => r.symbol === '^VIX');
+  if (!nk) return;
+
+  const chg = nk.regularMarketChangePercent || 0;
+  const vixVal = vix?.regularMarketPrice || 20;
+
+  let score = 50;
+  score += Math.round(chg * 4);
+  score -= Math.round((vixVal - 20) * 0.8);
+  score = Math.min(95, Math.max(20, score));
+
+  let label, badge, desc;
+  if (score >= 75) {
+    label = '強気 🚀'; badge = '⚡ 買い優勢';
+    desc = `日経平均は${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%と上昇。VIX ${vixVal.toFixed(1)} は安定域で、リスクオン地合いです。`;
+  } else if (score >= 55) {
+    label = 'やや強気 📈'; badge = '📊 上昇トレンド';
+    desc = `日経平均は${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%。VIX ${vixVal.toFixed(1)} で市場は比較的落ち着いています。`;
+  } else if (score >= 40) {
+    label = '中立 ➡️'; badge = '🔍 様子見';
+    desc = `日経平均は${chg.toFixed(2)}%。VIX ${vixVal.toFixed(1)} で方向感に乏しい展開です。`;
+  } else if (score >= 25) {
+    label = 'やや弱気 📉'; badge = '⚠️ 警戒モード';
+    desc = `日経平均は${chg.toFixed(2)}%と下落。VIX ${vixVal.toFixed(1)} でリスクオフの動きが見られます。`;
+  } else {
+    label = '弱気 🔴'; badge = '🚨 急落注意';
+    desc = `日経平均は${chg.toFixed(2)}%と大幅下落。VIX ${vixVal.toFixed(1)} 上昇中、警戒が必要です。`;
+  }
+
+  document.getElementById('market-score-num').textContent = score;
+  document.getElementById('market-score-label').textContent = label;
+  document.getElementById('market-badge').textContent = badge;
+  document.getElementById('market-desc').textContent = desc;
+}
+
+// ページ読み込み時に実行
+loadMarketPulse();
+
 let popularLoaded = false;
 
 // 人気ランキング取得
