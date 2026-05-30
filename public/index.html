@@ -28,13 +28,7 @@
       linear-gradient(90deg, rgba(0,198,255,0.03) 1px, transparent 1px);
     background-size:60px 60px;
   }
-  header {
-    position:sticky; top:0; z-index:100;
-    background:rgba(6,9,16,0.92); backdrop-filter:blur(20px);
-    border-bottom:1px solid var(--border);
-    padding:0 16px; height:56px;
-    display:flex; align-items:center; justify-content:space-between;
-  }
+  header { position:sticky; top:0; z-index:100; background:rgba(6,9,16,0.92); backdrop-filter:blur(20px); border-bottom:1px solid var(--border); padding:0 16px; height:56px; display:flex; align-items:center; justify-content:space-between; }
   .logo { font-family:'Rajdhani',sans-serif; font-size:26px; font-weight:700; letter-spacing:2px; color:var(--accent); text-shadow:0 0 20px rgba(0,198,255,0.5); }
   .logo span { color:var(--accent2); }
   .logo-badge { font-size:9px; font-weight:700; letter-spacing:1px; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#000; padding:2px 6px; border-radius:4px; margin-left:6px; vertical-align:middle; }
@@ -281,26 +275,12 @@
 <footer>
   ※ 本ツールが提供する情報はデータ提供のみを目的としており、<br>
   投資助言・売買推奨ではありません。投資判断はご自身の責任で行ってください。<br><br>
-  📡 株価データ：市場データ（約15分遅延）｜© 2026 かぶAI
+  📡 株価データ：Yahoo Finance（約15分遅延）｜© 2026 かぶAI
 </footer>
 
 <script>
 let currentAnalysis = null;
 let popularLoaded = false;
-
-const PROXIES = [
-  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-];
-async function fetchWithProxy(url) {
-  for (const proxy of PROXIES) {
-    try {
-      const res = await fetch(proxy(url), { signal: AbortSignal.timeout(8000) });
-      if (res.ok) return JSON.parse(await res.text());
-    } catch(e) {}
-  }
-  return null;
-}
 
 // 人気ランキング取得
 async function fetchPopular() {
@@ -308,9 +288,7 @@ async function fetchPopular() {
     const res = await fetch('/api/ranking');
     const data = await res.json();
     return data.ranking || null;
-  } catch(e) {
-    return null;
-  }
+  } catch(e) { return null; }
 }
 
 function renderPopularList(ranking) {
@@ -357,6 +335,7 @@ function quickAnalyze(code) {
   document.getElementById('stockInput').value = code;
   analyzeStock();
 }
+
 async function analyzeStock() {
   const input = document.getElementById('stockInput').value.trim();
   if (!input) { alert('証券コードを入力してください'); return; }
@@ -364,35 +343,39 @@ async function analyzeStock() {
   document.getElementById('result-area').style.display = 'none';
   document.getElementById('loading').classList.add('show');
   window.scrollTo(0, 0);
-  const ticker = input.includes('.') ? input : input + '.T';
-  const demoMap = {
+
+  const fallbackMap = {
     '7203': {name:'トヨタ自動車', price:3850, per:8.2, pbr:1.1, div:3.1, cap:'47.2兆円', sector:'自動車', high52:4200, chg:2.3},
     '6723': {name:'ルネサスエレクトロニクス', price:2180, per:12.1, pbr:2.8, div:0.8, cap:'4.2兆円', sector:'半導体', high52:2650, chg:3.1},
     '4063': {name:'信越化学工業', price:5920, per:14.6, pbr:3.1, div:2.2, cap:'8.9兆円', sector:'化学', high52:6800, chg:1.8},
     '9984': {name:'ソフトバンクグループ', price:9840, per:18.4, pbr:1.4, div:0.6, cap:'12兆円', sector:'通信', high52:11200, chg:4.2},
     '6758': {name:'ソニーグループ', price:2740, per:16.8, pbr:2.2, div:0.6, cap:'14兆円', sector:'電機', high52:3100, chg:1.1},
   };
-  const fallback = demoMap[input] || { name:`銘柄 ${input}`, price:2000, per:15, pbr:1.5, div:2.0, cap:'1兆円', sector:'一般', high52:2500, chg:1.0 };
+  const fallback = fallbackMap[input] || { name:`銘柄 ${input}`, price:2000, per:15, pbr:1.5, div:2.0, cap:'1兆円', sector:'一般', high52:2500, chg:1.0 };
   let stockInfo = { ...fallback, isReal: false };
+
   try {
-    setStep('📡 市場からデータ取得中...', `${ticker} に接続しています`);
-    const data = await fetchWithProxy(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}`);
-    if (data?.quoteResponse?.result?.[0]) {
-      const q = data.quoteResponse.result[0];
-      stockInfo = {
-        name: q.longName || q.shortName || fallback.name,
-        price: q.regularMarketPrice || fallback.price,
-        per: q.trailingPE ? +q.trailingPE.toFixed(1) : fallback.per,
-        pbr: q.priceToBook ? +q.priceToBook.toFixed(1) : fallback.pbr,
-        div: q.trailingAnnualDividendYield ? +(q.trailingAnnualDividendYield*100).toFixed(1) : fallback.div,
-        cap: q.marketCap ? formatCap(q.marketCap) : fallback.cap,
-        sector: q.sector || fallback.sector,
-        high52: q.fiftyTwoWeekHigh || fallback.high52,
-        chg: q.regularMarketChangePercent ? +q.regularMarketChangePercent.toFixed(2) : fallback.chg,
-        isReal: true,
-      };
+    setStep('📡 市場からデータ取得中...', `${input} に接続しています`);
+    const res2 = await fetch(`/api/quote?code=${input}`);
+    if (res2.ok) {
+      const q = await res2.json();
+      if (!q.error && q.price) {
+        stockInfo = {
+          name: q.name || fallback.name,
+          price: q.price,
+          per: q.per ?? fallback.per,
+          pbr: q.pbr ?? fallback.pbr,
+          div: q.div ?? fallback.div,
+          cap: q.cap ? formatCap(q.cap) : fallback.cap,
+          sector: q.sector || fallback.sector,
+          high52: q.high52 || fallback.high52,
+          chg: q.chg ?? fallback.chg,
+          isReal: true,
+        };
+      }
     }
-  } catch(e) {}
+  } catch(e) { console.log('Quote API failed, using fallback'); }
+
   const highRatio = Math.round((stockInfo.price / stockInfo.high52) * 100);
   let score = 50;
   if (stockInfo.per < 15) score += 12; else if (stockInfo.per < 25) score += 5;
@@ -400,6 +383,7 @@ async function analyzeStock() {
   if (stockInfo.div > 2) score += 12; else if (stockInfo.div > 1) score += 6;
   if (highRatio > 80) score += 10;
   score = Math.min(99, Math.max(35, score));
+
   const chgSign = stockInfo.chg >= 0 ? '▲' : '▼';
   document.getElementById('res-name').textContent = stockInfo.name;
   document.getElementById('res-code').textContent = `#${input} · ${stockInfo.sector}`;
@@ -413,21 +397,30 @@ async function analyzeStock() {
   document.getElementById('m-sector').textContent = stockInfo.sector;
   document.getElementById('data-tag').textContent = stockInfo.isReal ? '📡 リアルタイムデータ' : '📋 デモデータ';
   document.getElementById('data-tag').style.color = stockInfo.isReal ? 'var(--accent2)' : 'var(--warn)';
+
   setEval('e-per', stockInfo.per, [15,25], true);
   setEval('e-pbr', stockInfo.pbr, [1.5,3], true);
   setEval('e-div', stockInfo.div, [2,1], false);
   setEval('e-high', highRatio, [85,60], false);
   setStep('🤖 Claude AIが分析中...', 'AIコメントを生成しています');
+
   try {
     const prompt = `あなたは日本株の財務データアナリストです。以下のデータを元に、投資家向けの客観的な財務分析コメントを200文字以内の日本語で作成してください。投資推奨は含めず、データの特徴のみ記述してください。\n\n銘柄: ${stockInfo.name}（${input}）/ 業種: ${stockInfo.sector}\n株価: ¥${stockInfo.price.toLocaleString()} (${chgSign}${Math.abs(stockInfo.chg)}%) / PER: ${stockInfo.per}倍 / PBR: ${stockInfo.pbr}倍\n配当利回り: ${stockInfo.div}% / 時価総額: ${stockInfo.cap} / 52週高値比: ${highRatio}%`;
+
     const res = await fetch('/api/analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({prompt}) });
     const aiData = await res.json();
     document.getElementById('loading').classList.remove('show');
     document.getElementById('result-area').style.display = 'block';
-    const aiComment = aiData.content?.[0]?.text || 'コメント生成に失敗しました';
-    currentAnalysis = { name:stockInfo.name, code:input, price:stockInfo.price, chgSign, chg:stockInfo.chg, score, per:stockInfo.per, pbr:stockInfo.pbr, div:stockInfo.div, cap:stockInfo.cap, highRatio, sector:stockInfo.sector, comment:aiComment };
 
-    // 分析カウントを記録（ノンブロッキング）
+    const aiComment = aiData.content?.[0]?.text || 'コメント生成に失敗しました';
+    currentAnalysis = {
+      name: stockInfo.name, code: input, price: stockInfo.price,
+      chgSign, chg: stockInfo.chg, score,
+      per: stockInfo.per, pbr: stockInfo.pbr, div: stockInfo.div,
+      cap: stockInfo.cap, highRatio, sector: stockInfo.sector, comment: aiComment
+    };
+
+    // 分析カウントを記録
     fetch('/api/track', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -452,20 +445,35 @@ async function analyzeStock() {
     document.getElementById('res-comment-preview').textContent = `エラー: ${e.message}`;
   }
 }
+
 async function startPayment(amount, plan) {
   if (!currentAnalysis) return;
   try {
-    const res = await fetch('/api/stripe-checkout', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ amount, plan, stockCode:currentAnalysis.code, stockName:currentAnalysis.name, comment:currentAnalysis.comment, score:currentAnalysis.score, per:currentAnalysis.per, pbr:currentAnalysis.pbr, div:currentAnalysis.div, cap:currentAnalysis.cap, highRatio:currentAnalysis.highRatio }) });
+    const res = await fetch('/api/stripe-checkout', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        amount, plan,
+        stockCode: currentAnalysis.code, stockName: currentAnalysis.name,
+        comment: currentAnalysis.comment, score: currentAnalysis.score,
+        per: currentAnalysis.per, pbr: currentAnalysis.pbr,
+        div: currentAnalysis.div, cap: currentAnalysis.cap,
+        highRatio: currentAnalysis.highRatio
+      })
+    });
     const data = await res.json();
     if (data.url) window.location.href = data.url;
   } catch(e) { alert('エラーが発生しました: ' + e.message); }
 }
+
 function typeText(id, text) {
   const el = document.getElementById(id);
   if (!el) return;
   el.textContent = ''; el.classList.add('typing');
   let i = 0;
-  const t = setInterval(() => { el.textContent += text[i++]; if (i >= text.length) { clearInterval(t); el.classList.remove('typing'); } }, 25);
+  const t = setInterval(() => {
+    el.textContent += text[i++];
+    if (i >= text.length) { clearInterval(t); el.classList.remove('typing'); }
+  }, 25);
 }
 function setStep(main, sub) {
   document.getElementById('loading-text').textContent = main;
