@@ -2,45 +2,37 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
 
+  // TOPIXはETF(1306.T)で代替
+  const symbols = ['%5EN225', '1306.T', 'USDJPY%3DX', '%5EVIX'];
+
   try {
-    // v8エンドポイントを使用
-    const url = 'https://query2.finance.yahoo.com/v8/finance/chart/%5EN225?interval=1d&range=1d';
-    const r = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json',
-        'Accept-Language': 'ja-JP,ja;q=0.9',
-        'Referer': 'https://finance.yahoo.com',
-      }
-    });
-    const data = await r.json();
-    const meta = data?.chart?.result?.[0]?.meta;
-
-    if (!meta) {
-      res.status(200).json({ results: [], debug: 'no meta' });
-      return;
-    }
-
-    // 各シンボルを個別取得
-    const symbols = ['%5EN225', '%5ETOPIX', 'USDJPY%3DX', '%5EVIX'];
     const results = [];
 
     for (const sym of symbols) {
       try {
-        const r2 = await fetch(`https://query2.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=1d`, {
+        const r = await fetch(`https://query2.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=2d`, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             'Referer': 'https://finance.yahoo.com',
           }
         });
-        const d2 = await r2.json();
-        const m = d2?.chart?.result?.[0]?.meta;
-        if (m) {
+        const d = await r.json();
+        const meta = d?.chart?.result?.[0]?.meta;
+        if (meta) {
+          const price = meta.regularMarketPrice;
+          const prev  = meta.previousClose || meta.chartPreviousClose;
+          const change     = prev ? price - prev : null;
+          const changePct  = prev ? ((price - prev) / prev) * 100 : null;
+
+          // シンボル名を統一
+          let symbol = meta.symbol;
+          if (symbol === '1306.T') symbol = '^TOPIX';
+
           results.push({
-            symbol: m.symbol,
-            regularMarketPrice: m.regularMarketPrice,
-            regularMarketChangePercent: ((m.regularMarketPrice - m.previousClose) / m.previousClose) * 100,
-            regularMarketChange: m.regularMarketPrice - m.previousClose,
+            symbol,
+            regularMarketPrice: price,
+            regularMarketChangePercent: changePct ? +changePct.toFixed(2) : null,
+            regularMarketChange: change ? +change.toFixed(2) : null,
           });
         }
       } catch(e2) {}
