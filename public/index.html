@@ -500,48 +500,30 @@ async function analyzeStock() {
   setEval('e-pbr', stockInfo.pbr, [1.5,3], true);
   setEval('e-div', stockInfo.div, [2,1], false);
   setEval('e-high', highRatio, [85,60], false);
-  setStep('🤖 Claude AIが分析中...', 'AIコメントを生成しています');
 
-  try {
-    const prompt = `あなたは日本株の財務データアナリストです。以下のデータを元に、投資家向けの客観的な財務分析コメントを200文字以内の日本語で作成してください。投資推奨は含めず、データの特徴のみ記述してください。\n\n銘柄: ${stockInfo.name}（${input}）/ 業種: ${stockInfo.sector}\n株価: ¥${stockInfo.price.toLocaleString()} (${chgSign}${Math.abs(stockInfo.chg)}%) / PER: ${stockInfo.per}倍 / PBR: ${stockInfo.pbr}倍\n配当利回り: ${stockInfo.div}% / 時価総額: ${stockInfo.cap} / 52週高値比: ${highRatio}%`;
+  // AI分析コメントは決済後にLINEで送信 → ここではトークン消費しない
+  currentAnalysis = {
+    name: stockInfo.name, code: input, price: stockInfo.price,
+    chgSign, chg: stockInfo.chg, score,
+    per: stockInfo.per, pbr: stockInfo.pbr, div: stockInfo.div,
+    cap: stockInfo.cap, highRatio, sector: stockInfo.sector
+  };
 
-    const res = await fetch('/api/analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({prompt}) });
-    const aiData = await res.json();
-    document.getElementById('loading').classList.remove('show');
-    document.getElementById('result-area').style.display = 'block';
+  // 分析カウントを記録
+  fetch('/api/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: input })
+  }).catch(() => {});
 
-    const aiComment = aiData.content?.[0]?.text || 'コメント生成に失敗しました';
-    currentAnalysis = {
-      name: stockInfo.name, code: input, price: stockInfo.price,
-      chgSign, chg: stockInfo.chg, score,
-      per: stockInfo.per, pbr: stockInfo.pbr, div: stockInfo.div,
-      cap: stockInfo.cap, highRatio, sector: stockInfo.sector, comment: aiComment
-    };
+  document.getElementById('loading').classList.remove('show');
+  document.getElementById('result-area').style.display = 'block';
 
-    // 分析カウントを記録
-    fetch('/api/track', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: input })
-    }).catch(() => {});
-
-    const sentences = aiComment.match(/[^。！？]+[。！？]/g) || [aiComment];
-    const preview = sentences[0] || aiComment;
-    const rest = sentences.slice(1).join('') || '';
-    typeText('res-comment-preview', preview);
-    if (rest) {
-      document.getElementById('res-comment-blur').textContent = rest;
-      document.getElementById('comment-blur-area').style.display = 'block';
-      document.getElementById('comment-lock').style.display = 'flex';
-    } else {
-      document.getElementById('comment-blur-area').style.display = 'none';
-      document.getElementById('comment-lock').style.display = 'none';
-    }
-  } catch(e) {
-    document.getElementById('loading').classList.remove('show');
-    document.getElementById('result-area').style.display = 'block';
-    document.getElementById('res-comment-preview').textContent = `エラー: ${e.message}`;
-  }
+  // コメント欄は「決済後にLINEでお届け」固定表示
+  document.getElementById('res-comment-preview').textContent = '財務データの詳細分析コメントをお届けします。';
+  document.getElementById('comment-blur-area').style.display = 'block';
+  document.getElementById('res-comment-blur').textContent = 'PER・PBR・配当利回り・時価総額・52週高値比などを総合的に分析した詳細コメントは決済後にLINEでお受け取りください。';
+  document.getElementById('comment-lock').style.display = 'flex';
 }
 
 async function startPayment(amount, plan) {
@@ -552,10 +534,12 @@ async function startPayment(amount, plan) {
       body:JSON.stringify({
         amount, plan,
         stockCode: currentAnalysis.code, stockName: currentAnalysis.name,
-        comment: currentAnalysis.comment, score: currentAnalysis.score,
+        score: currentAnalysis.score,
         per: currentAnalysis.per, pbr: currentAnalysis.pbr,
         div: currentAnalysis.div, cap: currentAnalysis.cap,
-        highRatio: currentAnalysis.highRatio
+        sector: currentAnalysis.sector,
+        highRatio: currentAnalysis.highRatio,
+        chg: currentAnalysis.chg, price: currentAnalysis.price
       })
     });
     const data = await res.json();
