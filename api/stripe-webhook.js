@@ -29,16 +29,25 @@ export default async function handler(req, res) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    const { stockCode, stockName, plan } = session.metadata;
+    const { stockCode, stockName, plan, comment, score, per, pbr, div, cap, highRatio } = session.metadata;
 
-    // LINEに送信
-    const message = `✅ 決済完了！
+    const message = `✅ 決済完了！かぶAI分析レポート
 ━━━━━━━━━━━━
 🏢 ${stockName}（#${stockCode}）
 📊 プラン：${plan}
+🤖 AIスコア：${score}点
 ━━━━━━━━━━━━
-分析レポートをお届けします！
-かぶAI: https://kabu-ai-steel.vercel.app`;
+📈 PER：${per}倍
+📈 PBR：${pbr}倍
+💰 配当利回り：${div}%
+🏛 時価総額：${cap}
+📉 52週高値比：${highRatio}%
+━━━━━━━━━━━━
+🤖 AI分析コメント：
+${comment}
+━━━━━━━━━━━━
+⚠️ 投資助言ではありません
+📲 かぶAI: https://kabu-ai-steel.vercel.app`;
 
     await fetch('https://api.line.me/v2/bot/message/push', {
       method: 'POST',
