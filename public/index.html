@@ -109,6 +109,26 @@
   .back-btn { background:transparent; border:1px solid var(--border); color:var(--text2); border-radius:10px; padding:10px 16px; font-size:13px; cursor:pointer; font-family:inherit; margin-bottom:16px; display:flex; align-items:center; gap:6px; transition:all 0.2s; }
   .back-btn:hover { border-color:var(--accent); color:var(--accent); }
   footer { padding:24px 16px; text-align:center; color:var(--text2); font-size:11px; line-height:1.8; border-top:1px solid var(--border); margin-top:20px; }
+
+  /* コメントぼかし */
+  .comment-wrap { position:relative; }
+  .comment-preview { font-size:13px; color:var(--text); line-height:1.7; }
+  .comment-blur {
+    position:relative; margin-top:4px;
+    max-height:48px; overflow:hidden;
+  }
+  .comment-blur::after {
+    content:''; position:absolute; bottom:0; left:0; right:0; height:48px;
+    background:linear-gradient(transparent, rgba(26,34,54,0.97));
+    pointer-events:none;
+  }
+  .comment-blur-text { font-size:13px; color:var(--text); line-height:1.7; filter:blur(4px); user-select:none; }
+  .comment-lock {
+    text-align:center; padding:10px 0 4px;
+    font-size:12px; color:var(--text2);
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .lock-icon { font-size:14px; }
 </style>
 </head>
 <body>
@@ -167,7 +187,18 @@
       </div>
       <div class="ai-comment">
         <div class="ai-comment-label">🤖 Claude AI 分析コメント</div>
-        <div class="ai-comment-text" id="res-comment">分析中...</div>
+        <div class="comment-wrap">
+          <!-- 無料表示部分（最初の1文） -->
+          <div class="comment-preview" id="res-comment-preview">分析中...</div>
+          <!-- ぼかし部分（続き） -->
+          <div class="comment-blur" id="comment-blur-area">
+            <div class="comment-blur-text" id="res-comment-blur"></div>
+          </div>
+          <div class="comment-lock" id="comment-lock">
+            <span class="lock-icon">🔒</span>
+            <span>続きはLINEで受け取る</span>
+          </div>
+        </div>
       </div>
 
       <!-- LINE送信結果 -->
@@ -364,7 +395,23 @@ async function analyzeStock() {
       comment: aiComment
     };
 
-    typeText('res-comment', aiComment);
+    // コメントを最初の文とそれ以降に分割
+    const sentences = aiComment.match(/[^。！？]+[。！？]/g) || [aiComment];
+    const preview = sentences[0] || aiComment;
+    const rest = sentences.slice(1).join('') || '';
+
+    // プレビュー部分をタイピングアニメーションで表示
+    typeText('res-comment-preview', preview);
+
+    // ぼかし部分をセット（残りのテキスト）
+    if (rest) {
+      document.getElementById('res-comment-blur').textContent = rest;
+      document.getElementById('comment-blur-area').style.display = 'block';
+      document.getElementById('comment-lock').style.display = 'flex';
+    } else {
+      document.getElementById('comment-blur-area').style.display = 'none';
+      document.getElementById('comment-lock').style.display = 'none';
+    }
 
   } catch(e) {
     document.getElementById('loading').classList.remove('show');
@@ -435,6 +482,7 @@ ${currentAnalysis.comment}
 
 function typeText(id, text) {
   const el = document.getElementById(id);
+  if (!el) return;
   el.textContent = ''; el.classList.add('typing');
   let i = 0;
   const t = setInterval(() => {
