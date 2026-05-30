@@ -13,6 +13,30 @@ async function getRawBody(req) {
   });
 }
 
+// KVからユーザーIDを取得
+async function getLineUserId(sessionId) {
+  // セッションIDに紐付いたユーザーIDを取得
+  try {
+    const res = await fetch(`${process.env.KV_REST_API_URL}/get/session_${sessionId}`, {
+      headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` }
+    });
+    const data = await res.json();
+    if (data.result) return data.result;
+  } catch(e) {}
+
+  // なければ最新ユーザーIDを取得
+  try {
+    const res = await fetch(`${process.env.KV_REST_API_URL}/get/latest_line_user`, {
+      headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` }
+    });
+    const data = await res.json();
+    if (data.result) return data.result;
+  } catch(e) {}
+
+  // 最終手段：環境変数のユーザーID
+  return process.env.LINE_USER_ID;
+}
+
 async function generateDetailedAnalysis(stockName, stockCode, per, pbr, div, cap, highRatio, score, baseComment) {
   const prompt = `あなたは日本株の財務データアナリストです。以下のデータを元に、投資家向けの詳細な財務分析レポートを日本語で作成してください。
 
@@ -67,10 +91,12 @@ export default async function handler(req, res) {
     const session = event.data.object;
     const { stockCode, stockName, plan, comment, score, per, pbr, div, cap, highRatio } = session.metadata;
 
+    // ユーザーIDを取得
+    const lineUserId = await getLineUserId(session.id);
+
     let analysisContent = comment;
     let messageTitle = '📋 簡易レポート';
 
-    // 詳細レポートの場合はClaudeで再分析
     if (plan === '詳細レポート') {
       messageTitle = '📊 詳細レポート';
       analysisContent = await generateDetailedAnalysis(
@@ -121,7 +147,7 @@ ${analysisContent}
         'Authorization': `Bearer ${process.env.LINE_CHANNEL_TOKEN}`
       },
       body: JSON.stringify({
-        to: process.env.LINE_USER_ID,
+        to: lineUserId,
         messages: [{ type: 'text', text: message }]
       })
     });
