@@ -59,7 +59,7 @@ PER: ${per}倍 / PBR: ${pbr}倍 / 配当利回り: ${div}%
 PER: ${per}倍 / PBR: ${pbr}倍 / 配当利回り: ${div}%
 時価総額: ${cap} / 52週高値比: ${highRatio}% / AIスコア: ${score}点`;
 
-      const aiRes = await fetch('/api/analyze', {
+      const aiRes = await fetch('https://kabu-ai-steel.vercel.app/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt })
